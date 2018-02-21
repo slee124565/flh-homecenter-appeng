@@ -33,6 +33,8 @@ class DemoMessagesAPI(View):
             id_token, HTTP_REQUEST)
         if not claims:
             return HttpResponse('Unauthorized', status=401)
+        else:
+            logger.debug('claims: %s' % str(claims))
 
         friendly_id = claims.get('name', claims.get('email', 'Unknown'))
 
