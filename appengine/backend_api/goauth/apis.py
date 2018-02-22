@@ -15,7 +15,32 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# Structure of Auth
+# {
+#     'clients': {
+#     '< client id >': {
+#         'clientSecret': '< value >',
+#         'uid': '< value >'
+#         }
+#     },
+#     'tokens': {
+#     '< token id >': {
+#         '< uid >': {}
+#         },
+#     },
+#     'users': {
+#     '< uid >': {
+#         'name': '< username >',
+#         'password': '< password >',
+#         'tokens': [ '< token id >', ],
+#         'clients': [ '< client id >', ]
+#         }
+#     }
+# }
+
+
 class AuthStore(object):
+
     clients = {
         'dfb1e2a9cd55889cd778fd7aad8406d0': {}
     }
@@ -33,7 +58,7 @@ class AuthStore(object):
             'uid': uid,
             'client_id': client_id,
             'expires_at': datetime.datetime.now() + datetime.timedelta(seconds=(60 * 10000))
-        };
+        }
 
         return auth_code
 
@@ -49,23 +74,47 @@ class AuthStore(object):
         return cls.auth_codes.get(code, None)
 
     @classmethod
+    def check_uid(cls, uid):
+        return True
+
+    @classmethod
+    def get_token_by_uid(cls, uid):
+        return {
+            'uid': '1234',
+            'access_token': 'psokmCxKjfhk7qHLeYd1',
+            'refresh_token': 'psokmCxKjfhk7qHLeYd1',
+        }
+
+    @classmethod
     def get_access_token(cls, code):
-        """
         # let authCode = authstore.authcodes[code];
         # if (!authCode) {
         # console.error('invalid code');
         # return false;
         # }
+        auth_code = AuthStore.get_auth_code(code)
+        if auth_code is None:
+            logger.error('invalid code')
+            return None
+
         # if (new Date(authCode.expiresAt) < Date.now()) {
         # console.error('expired code');
         # return false;
         # }
         #
+        if auth_code.get('expires_at') < datetime.datetime.now():
+            logger.error('expired code')
+            return None
+
         # let user = authstore.users[authCode.uid];
         # if (!user) {
         # console.error('could not find user');
         # return false;
         # }
+        if not AuthStore.check_uid(auth_code.get('uid')):
+            logger.error('could not find user')
+            return None
+
         # let accessToken = authstore.tokens[user.tokens[0]];
         # console.log('getAccessToken = ', accessToken);
         # if (!accessToken || !accessToken.uid) {
@@ -73,15 +122,33 @@ class AuthStore(object):
         # return false;
         # }
         #
+        uid_token = AuthStore.get_token_by_uid(auth_code.get('uid'))
+        if uid_token is None:
+            logger.error('could not find accessToken')
+            return None
+
         # let returnToken = {
         # token_type: "bearer",
         # access_token: accessToken.accessToken,
         # refresh_token: accessToken.refreshToken
         # };
         #
+        access_token = {
+            'token_type': 'bearer',
+            'access_token': uid_token.get('access_token'),
+            'refresh_token': uid_token.get('refresh_token')
+        }
+
         # console.log('return getAccessToken = ', returnToken);
         # return returnToken;
-        """
+        logger.debug('return token %s' % str(access_token))
+        return access_token
+
+
+class OAuthLogin(View):
+
+    def post(self, request, *args, **kwargs):
+        pass
 
 
 class OAuthAPI(View):
@@ -93,9 +160,15 @@ class OAuthAPI(View):
         state = request.GET.get('state', None)
         response_type = request.GET.get('response_type', None)
         auth_code = request.GET.get('code', None)
+        logger.info('oauth api params:\n' +
+                    'client_id: {client_id},\n'.format(client_id=client_id) +
+                    'redirect_uri: {redirect_uri},\n'.format(redirect_uri=redirect_uri) +
+                    'state: {state},\n'.format(state=state) +
+                    'response_type: {response_type},\n'.format(response_type=response_type) +
+                    'auth_code: {auth_code}'.format(auth_code=auth_code))
 
         if response_type != 'code':
-            return  HttpResponseServerError('response_type ' + response_type + ' must equal "code"')
+            return HttpResponseServerError('response_type ' + response_type + ' must equal "code"')
 
         if AuthStore.clients.get(client_id, None) is None:
             return HttpResponseServerError('client_id ' + client_id + ' invalid')
@@ -103,6 +176,7 @@ class OAuthAPI(View):
         # // if you have an authcode use that
         if auth_code:
             return HttpResponseRedirect('%s?code=%s&state=%s' % (redirect_uri, auth_code, state))
+
         auth_token = request.META.get('HTTP_AUTHORIZATION').split(' ').pop()
         logger.debug('get auth_token %s' % auth_token)
 

@@ -9,28 +9,28 @@ class AuthStore(object):
     @classmethod
     def get_auth_store(self):
         """
-        Structure of Auth
-        {
-            'clients': {
-            '< client id >': {
-                'clientSecret': '< value >',
-                'uid': '< value >'
-                }
-            },
-            'tokens': {
-            '< token id >': {
-                '< uid >': {}
-                },
-            },
-            'users': {
-            '< uid >': {
-                'name': '< username >',
-                'password': '< password >',
-                'tokens': [ '< token id >', ],
-                'clients': [ '< client id >', ]
-                }
-            }
-        }
+        # Structure of Auth
+        # {
+        #     'clients': {
+        #     '< client id >': {
+        #         'clientSecret': '< value >',
+        #         'uid': '< value >'
+        #         }
+        #     },
+        #     'tokens': {
+        #     '< token id >': {
+        #         '< uid >': {}
+        #         },
+        #     },
+        #     'users': {
+        #     '< uid >': {
+        #         'name': '< username >',
+        #         'password': '< password >',
+        #         'tokens': [ '< token id >', ],
+        #         'clients': [ '< client id >', ]
+        #         }
+        #     }
+        # }
 
         :return: Auth
         """
