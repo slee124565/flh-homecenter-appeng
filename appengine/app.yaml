@@ -14,11 +14,27 @@ handlers:
   script: mysite.wsgi.application
 - url: /s/.*
   script: mysite.wsgi.application
+- url: /oc/.*
+  script: mysite.wsgi.application
 - url: /frontend
   static_dir: frontend/
+- url: /bower_components
+  static_dir: ngapp/bower_components
+- url: /scripts
+  static_dir: ngapp/app/scripts
+- url: /styles
+  static_dir: ngapp/app/styles
+- url: /fonts
+  static_dir: ngapp/app/fonts
+- url: /images
+  static_dir: ngapp/app/images
+- url: /views
+  static_dir: ngapp/app/views
 - url: /
-  static_files: frontend/index.html
-  upload: frontend/index.html
+  static_files: ngapp/app/index.html
+  upload: ngapp/app/index.html
+#  static_files: frontend/index.html
+#  upload: frontend/index.html
 
 libraries:
 - name: ssl
@@ -40,3 +56,6 @@ skip_files:
 - ^(.*/)?.*/RCS/.*$
 - ^(.*/)?\..*$
 #- ^env/.*$
+#- ^ngapp/bower_components$
+- ^ngapp/node_modules$
+- ^ngapp/test$

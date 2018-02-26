@@ -39,6 +39,9 @@ urlpatterns = [
     # == flh service api include ==
     url(r'^s/h/', include('backend_api.services.hc2.urls')),
 
+    # == oauth code flow api include ==
+    url(r'^oc/', include('backend_api.goauth.urls')),
+
     # url(r'^db/dev/(?P<pi_serial>\w+)/$', DeviceInfoView.as_view(), name='dev_info'),
 
 

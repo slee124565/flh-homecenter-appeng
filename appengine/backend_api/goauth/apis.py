@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.urls import reverse
 
 import urllib
+import json
 import google.oauth2.id_token
 import datetime
 
@@ -153,57 +154,83 @@ class OAuthLogin(View):
 
 class OAuthAPI(View):
 
-    def get(self, request, *args, **kwargs):
+    @staticmethod
+    def oauth_handler(request):
 
-        client_id = request.GET.get('client_id', None)
-        redirect_uri = request.GET.get('redirect_uri', None)
-        state = request.GET.get('state', None)
-        response_type = request.GET.get('response_type', None)
-        auth_code = request.GET.get('code', None)
-        logger.info('oauth api params:\n' +
-                    'client_id: {client_id},\n'.format(client_id=client_id) +
-                    'redirect_uri: {redirect_uri},\n'.format(redirect_uri=redirect_uri) +
-                    'state: {state},\n'.format(state=state) +
-                    'response_type: {response_type},\n'.format(response_type=response_type) +
-                    'auth_code: {auth_code}'.format(auth_code=auth_code))
+        if request.method == 'GET':
+            client_id = request.GET.get('client_id', None)
+            redirect_uri = request.GET.get('redirect_uri', None)
+            state = request.GET.get('state', None)
+            response_type = request.GET.get('response_type', None)
+            auth_code = request.GET.get('auth_code', None)
+            id_token = request.GET.get('id_token', None)
+        else:
+            client_id = request.POST.get('client_id', None)
+            redirect_uri = request.POST.get('redirect_uri', None)
+            state = request.POST.get('state', None)
+            response_type = request.POST.get('response_type', None)
+            auth_code = request.POST.get('auth_code', None)
+            id_token = request.GET.get('id_token', None)
+
+        params = {
+            'client_id': client_id,
+            'redirect_uri': redirect_uri,
+            'state': state,
+            'response_type': response_type,
+            'auth_code': auth_code,
+            'id_token': id_token
+        }
+        logger.info('oauth api params:\n%s' % json.dumps(params, indent=2))
 
         if response_type != 'code':
-            return HttpResponseServerError('response_type ' + response_type + ' must equal "code"')
+            return HttpResponseServerError('response_type {response_type} must equal "code"'.format(
+                response_type=response_type))
 
         if AuthStore.clients.get(client_id, None) is None:
-            return HttpResponseServerError('client_id ' + client_id + ' invalid')
+            return HttpResponseServerError('client_id {client_id} invalid'.format(
+                client_id=client_id
+            ))
 
         # // if you have an authcode use that
         if auth_code:
             return HttpResponseRedirect('%s?code=%s&state=%s' % (redirect_uri, auth_code, state))
 
-        auth_token = request.META.get('HTTP_AUTHORIZATION').split(' ').pop()
-        logger.debug('get auth_token %s' % auth_token)
-
-        HTTP_REQUEST = google.auth.transport.requests.Request()
-        claims = google.oauth2.id_token.verify_firebase_token(
-            auth_token, HTTP_REQUEST)
-
         # // Redirect anonymous users to login page.
-        if not claims:
-            return HttpResponseRedirect('/login?client_id=%s&redirect_uri=%s&redirect=%s&state=%s' % (
-                client_id, urllib.urlencode(redirect_uri), reverse('oauth_code_api'), state
-            ))
+        if id_token:
+            HTTP_REQUEST = google.auth.transport.requests.Request()
+            claims = google.oauth2.id_token.verify_firebase_token(
+                id_token, HTTP_REQUEST)
+        else:
+            claims = None
 
-        # console.log('login successful ', user.name);
-        user_id = claims.get('user_id')
-        friendly_id = claims.get('name', claims.get('email', 'Unknown'))
-        logger.info('%s login successful user_id %s' % (friendly_id, user_id))
+        if not claims:
+            query_string = urllib.urlencode(params)
+            logger.info('redirect login with query string %s' % query_string)
+            return HttpResponseRedirect('/#!/login?%s' % query_string)
+        else:
+            user_id = claims.get('user_id')
+            friendly_id = claims.get('name', claims.get('email', 'Unknown'))
+            logger.info('%s login successful user_id %s' % (friendly_id, user_id))
 
         # Redirect to user to original app server
         auth_code = AuthStore.generate_auth_code(user_id, client_id)
+        params['auth_code'] = auth_code
         if auth_code:
-            logger.debug('authCode successful %s' % auth_code)
-            return HttpResponseRedirect('%s?code=%s&state=%s' % (
-                redirect_uri, auth_code, state
-            ))
+            if redirect_uri:
+                logger.debug('authCode successful %s' % auth_code)
+                return HttpResponseRedirect('%s?code=%s&state=%s' % (
+                    redirect_uri, auth_code, state
+                ))
+            else:
+                return HttpResponse(json.dumps(params, indent=2))
 
         return HttpResponseBadRequest('something went wrong')
+
+    def get(self, request, *args, **kwargs):
+        return OAuthAPI.oauth_handler(request)
+
+    def post(self, request, *args, **kwargs):
+        return OAuthAPI.oauth_handler(request)
 
 
 class TokenExAPI(View):
