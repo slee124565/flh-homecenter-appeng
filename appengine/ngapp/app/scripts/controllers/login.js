@@ -49,8 +49,8 @@ angular.module('ngappApp')
             console.log('user firebase login token', idToken);
             login.queryString += '&id_token=' + idToken;
             console.log('queryString', login.queryString);
-//            $window.location.href = '/oc/oauth?' + login.queryString;
-            $window.location.href = 'https://flh-homecenter.appspot.com/oc/oauth?' + login.queryString;
+            $window.location.href = '/oc/oauth?' + login.queryString;
+//            $window.location.href = 'https://flh-homecenter.appspot.com/oc/oauth?' + login.queryString;
           });
         } else {
           console.log('no user object and idToken!');

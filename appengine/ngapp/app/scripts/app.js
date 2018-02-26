@@ -28,6 +28,6 @@ angular
 	        controller: 'LogoutCtrl as logout',
 	    });
 
-//	    $urlRouterProvider.otherwise('/logout');
+	    $urlRouterProvider.otherwise('/logout');
 
 	});
