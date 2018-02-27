@@ -45,21 +45,27 @@ class AuthStore(object):
     clients = {
         'dfb1e2a9cd55889cd778fd7aad8406d0': {}
     }
-    auth_codes = {}
+    auth_codes = {
+        '908c65cf20628acd45f8e63ce6bbc796': {
+            'type': 'AUTH_CODE',
+            'uid': 'up5GqFgKb4OMoInRlIIqTTL3i9W2',
+            'client_id': 'dfb1e2a9cd55889cd778fd7aad8406d0',
+            'expires_at': datetime.datetime.now() + datetime.timedelta(seconds=(60 * 10000))
+        }
+    }
+    tokens = {
+        'psokmCxKjfhk7qHLeYd1': {
+          'uid': 'up5GqFgKb4OMoInRlIIqTTL3i9W2',
+          'accessToken': 'psokmCxKjfhk7qHLeYd1',
+          'refreshToken': 'psokmCxKjfhk7qHLeYd1',
+          'userId': '1234'
+        },
+    }
 
     @classmethod
     def generate_auth_code(cls, uid, client_id):
-        import hashlib
-        m = hashlib.md5()
-        m.update(uid + client_id)
-        auth_code = m.hexdigest()
-
-        cls.auth_codes[auth_code] = {
-            'type': 'AUTH_CODE',
-            'uid': uid,
-            'client_id': client_id,
-            'expires_at': datetime.datetime.now() + datetime.timedelta(seconds=(60 * 10000))
-        }
+        devp_auth_code = '908c65cf20628acd45f8e63ce6bbc796'
+        auth_code = devp_auth_code
 
         return auth_code
 
@@ -72,7 +78,10 @@ class AuthStore(object):
 
     @classmethod
     def get_auth_code(cls, code):
-        return cls.auth_codes.get(code, None)
+        auth_code = cls.auth_codes.get(code, None)
+        devp_expires_at = datetime.datetime.now() + datetime.timedelta(seconds=(60 * 10000))
+        auth_code['expires_at'] = devp_expires_at
+        return auth_code
 
     @classmethod
     def check_uid(cls, uid):
@@ -88,6 +97,13 @@ class AuthStore(object):
 
     @classmethod
     def get_access_token(cls, code):
+        dev_access_token = {
+            'token_type': 'bearer',
+            'access_token': 'psokmCxKjfhk7qHLeYd1',
+            'refresh_token': 'psokmCxKjfhk7qHLeYd1'
+        }
+        return dev_access_token
+
         # let authCode = authstore.authcodes[code];
         # if (!authCode) {
         # console.error('invalid code');
@@ -244,11 +260,18 @@ class TokenExAPI(View):
         if request.method == 'GET':
             client_id = request.GET.get('client_id', None)
             client_secret = request.GET.get('client_secret', None)
-            code = request.GET.get('refresh_token', None)
+            code = request.GET.get('code', None)
         else:
             client_id = request.POST.get('client_id', None)
             client_secret = request.POST.get('client_secret', None)
-            code = request.POST.get('refresh_token', None)
+            code = request.POST.get('code', None)
+
+        params = {
+            'client_id': client_id,
+            'client_secret': client_secret,
+            'code': code
+        }
+        logger.info('handle_auth_code params\n%s' % json.dumps(params, indent=2))
 
         #
         # if (!code) {
@@ -310,11 +333,12 @@ class TokenExAPI(View):
         #
         # console.log('respond success', token);
         # return res.status(200).json(token);
-        logger.info('respond success ' + token)
+        logger.info('respond success %s' % str(token))
         return JsonResponse(token)
 
     @staticmethod
     def handle_refresh_token(request):
+
         if request.method == 'GET':
             client_id = request.GET.get('client_id', None)
             client_secret = request.GET.get('client_secret', None)
@@ -323,6 +347,13 @@ class TokenExAPI(View):
             client_id = request.POST.get('client_id', None)
             client_secret = request.POST.get('client_secret', None)
             refresh_token = request.POST.get('refresh_token', None)
+
+        params = {
+            'client_id': client_id,
+            'client_secret': client_secret,
+            'refresh_token': refresh_token
+        }
+        logger.info('handle_refresh_token params\n%s' % json.dumps(params, indent=2))
 
         oauth_client = AuthStore.get_client(client_id, client_secret)
         if oauth_client is None:
@@ -341,6 +372,7 @@ class TokenExAPI(View):
         )
 
     def token_exchange_handler(self, request):
+
         if request.method == 'GET':
             client_id = request.GET.get('client_id', None)
             client_secret = request.GET.get('client_secret', None)
@@ -350,7 +382,16 @@ class TokenExAPI(View):
             client_secret = request.POST.get('client_secret', None)
             grant_type = request.POST.get('grant_type', None)
 
-        if client_id is None or client_secret is None:
+        params = {
+            'client_id': client_id,
+            'client_secret': client_secret,
+            'grant_type': grant_type
+        }
+        logger.info('token_exchange_handler params:\n%s' % json.dumps(params, indent=2))
+
+        logger.info('(client_id is None) %s' % str((client_id is None)))
+        logger.info('(client_secret is None) %s' % str((client_secret is None)))
+        if (client_id is None) or (client_secret is None):
             logger.error('missing required parameter')
             return HttpResponseBadRequest('missing required parameter')
 
